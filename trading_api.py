@@ -93,8 +93,9 @@ def is_trading_hours() -> bool:
 
 
 # Tweak this value if your computer's clock is slightly faster or slower than IQ Option's server.
-# For example, if IQ Option logs the trade at 11:11:59 instead of 11:12:00, set this to 2.0
-TRADE_DELAY_SECONDS = 1.78
+# Because the bot is now hosted on Render (which has a perfectly accurate clock), 
+# we set this to a slightly negative number to account for network latency.
+TRADE_DELAY_SECONDS = -0.525
 
 def _execute_mcp_batch(batch_commands):
     payload = []
