@@ -1,0 +1,28 @@
+{
+  "init": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "capabilities": {
+        "logging": {},
+        "tools": {
+          "listChanged": true
+        }
+      },
+      "instructions": "Trading gateway for binary-options (fixed-expiry call/put options: you stake an amount on the price being above or below the open quote at expiration; a winning position pays the stake plus profit_percent of it, a losing one forfeits the stake).\n\nTypical workflow: list_balances (pick a balance_id) \u2192 list_assets (pick an asset_id; note its profit_percent, minimum_amount/maximum_amount and available expirations) \u2192 get_candles for recent price context \u2192 place_trade (direction 'call' or 'put', an expired timestamp picked from the asset's expirations list in list_assets, the amount, and the asset's profit_percent). Use list_positions and get_trade_history to review. sell_position closes an open position early at the current buyback price where the asset allows it (buyback_enabled and outside buyback_deadtime_seconds before expiration); otherwise it returns 'sell_rejected' and the position settles at expiration. rollover_position moves a losing open position to the next expiration window for a commission (only where the backend has rollover configured; the position must not currently be in the money).\n\nMoney safety: each balance has a type \u2014 'regular' is a real-money account, 'training' is a demo account with imaginary funds. There is no default account: place_trade, sell_position and rollover_position act on the balance the position/amount belongs to. Check the balance's type from list_balances before placing \u2014 do not assume it. Before any write on a 'regular' balance, confirm the exact order (asset, direction, amount, expiration, balance) with the user and proceed only on explicit approval; prefer a 'training' balance to experiment.\n\nProvenance: never invent ids or numbers \u2014 every value you pass to a write tool must come from a prior read in this session (balance_id from list_balances; asset_id, profit_percent and the expiration from list_assets; position_id from list_positions). If a write fails with a not-found error, re-run the matching read tool to refresh the ids before retrying.\n\nAccess: there are two distinct reasons a write can be unavailable. (1) Your token lacks the binary-options:write scope \u2014 write tools are hidden and calls return a scope/permission error; call get_capabilities, which reports mode 'read-write', 'read-only', or 'none'. (2) Your account is regulatory-blocked from opening positions \u2014 list_assets, place_trade and rollover_position return 'trading_access_denied' even with a valid write scope, while sell_position stays allowed so you can wind down open exposure. Do not retry a 'trading_access_denied' error.\n\nRetries & idempotency: every write tool is idempotency-protected. The gateway fingerprints a write by (your user, the tool name, and the exact arguments) for one hour; replaying a byte-identical write inside that hour is rejected with 'idempotency_conflict' instead of placing a second trade. Do not blindly retry a write whose result you did not see \u2014 first call the matching read tool to check whether it already took effect. To place a genuinely new trade, change at least one argument. Only successful writes are fingerprinted, so retrying after a validation_error is allowed.\n\nErrors: each error carries a stable 'code' and a 'retryable' flag \u2014 only retry when retryable is true ('internal_error', 'rate_limited', 'throttled' after a short backoff). 'validation_error', scope/permission errors, 'trading_access_denied', 'idempotency_conflict', 'insufficient_funds', 'asset_not_available', 'trade_rejected', 'sell_rejected', 'rollover_unavailable' and 'rollover_rejected' are terminal \u2014 fix the request or read before re-writing rather than retrying. A 'validation_error' mentioning profit_percent means the payout changed \u2014 re-run list_assets and use its fresh profit_percent.\n\nRate limits: calls are rate-limited per user (shared across the user's tokens) over a rolling window \u2014 a global gateway cap counted against every call, plus separate read and write budgets (each tool counts against exactly one; get_capabilities and get_limits count against 'read'). The write budget is the tightest, so batch your reads up front and reserve write calls for trades you actually intend to place. Call get_limits for exact numbers; on a 'rate_limited' error back off using its retry_after_ms / reset_at rather than retrying immediately.",
+      "protocolVersion": "2024-11-05",
+      "serverInfo": {
+        "name": "qc-mcp-binary-options",
+        "version": "1.7.8"
+      }
+    }
+  },
+  "tools": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "error": {
+      "code": 0,
+      "message": "method \"tools/list\" is invalid during session initialization"
+    }
+  }
+}
