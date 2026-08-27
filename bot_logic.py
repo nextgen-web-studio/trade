@@ -10,7 +10,7 @@ bot_state = {"mode": "IDLE", "asset": None}
 
 # Placeholder specific IDs for your stickers (you will need to update these)
 # In Telethon, sticker document IDs are large integers
-CALL_STICKER_ID = 6116272169556121384           # UP / CALL
+CALL_STICKER_ID = 6116081567497459695           # UP / CALL
 PUT_STICKER_ID = 6116266384235174391            # DOWN / PUT
 
 async def handle_message(event: events.NewMessage.Event) -> None:
