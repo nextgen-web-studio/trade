@@ -8,10 +8,9 @@ logger = logging.getLogger(__name__)
 # State management (In-memory for simplicity)
 bot_state = {"mode": "IDLE", "asset": None}
 
-# Placeholder specific IDs for your stickers (you will need to update these)
-# In Telethon, sticker document IDs are large integers
-CALL_STICKER_ID = 6116081567497459695           # UP / CALL
-PUT_STICKER_ID = 6116266384235174391            # DOWN / PUT
+# List of accepted sticker IDs (Supports both your test channel and Magnus Pro)
+CALL_STICKER_IDS = [6116081567497459695, 6116272169556121384]   # UP / CALL
+PUT_STICKER_IDS = [6116266384235174391]                         # DOWN / PUT
 
 async def handle_message(event: events.NewMessage.Event) -> None:
     """Handles incoming channel messages and stickers via Telethon."""
@@ -24,8 +23,15 @@ async def handle_message(event: events.NewMessage.Event) -> None:
         logger.info(f"Received sticker with ID: {sticker_id}")
             
         # Direction Trigger (CALL/PUT)
-        if sticker_id in [CALL_STICKER_ID, PUT_STICKER_ID] and bot_state["mode"] == "ASSET_RECEIVED":
-            direction = "CALL" if sticker_id == CALL_STICKER_ID else "PUT"
+        if bot_state["mode"] == "ASSET_RECEIVED":
+            if sticker_id in CALL_STICKER_IDS:
+                direction = "CALL"
+            elif sticker_id in PUT_STICKER_IDS:
+                direction = "PUT"
+            else:
+                logger.info("Received a sticker, but it does not match known UP/DOWN stickers. Ignoring.")
+                return
+
             asset = bot_state["asset"]
             logger.info(f"Direction {direction} received for {asset}. Triggering trade.")
             
