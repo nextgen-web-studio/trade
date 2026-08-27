@@ -54,7 +54,18 @@ async def main():
 
     client = TelegramClient(session, API_ID, API_HASH)
 
-    @client.on(events.NewMessage(chats=int(TARGET_CHANNEL_ID) if TARGET_CHANNEL_ID else None))
+    def get_target_chats():
+        if not TARGET_CHANNEL_ID:
+            return None
+        try:
+            return [int(c.strip()) for c in TARGET_CHANNEL_ID.split(',') if c.strip()]
+        except ValueError:
+            logger.error("Invalid TARGET_CHANNEL_ID format. Expected integers separated by commas.")
+            return None
+
+    target_chats = get_target_chats()
+
+    @client.on(events.NewMessage(chats=target_chats))
     async def message_handler(event):
         await handle_message(event)
 
