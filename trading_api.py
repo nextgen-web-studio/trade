@@ -261,9 +261,7 @@ async def schedule_trade(asset: str, direction: str, client=None):
     if trade_amount_env.endswith("%"):
         percent = float(trade_amount_env.replace("%", "")) / 100
         trade_amount = float(prep_data["balance_amount"]) * percent
-        # Ensure minimum trade size (configurable for different currencies, defaults to 1)
-        min_trade = float(os.getenv("MIN_TRADE_AMOUNT", "1"))
-        trade_amount = max(min_trade, round(trade_amount, 2))
+        trade_amount = round(trade_amount, 2)
         # Cap at IQ Option maximum (default $20,000)
         max_allowed = float(os.getenv("MAX_TRADE_AMOUNT", "20000"))
         trade_amount = min(trade_amount, max_allowed)
