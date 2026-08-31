@@ -217,34 +217,28 @@ def _sync_execute_trade(trade_args: dict):
         return False, f"ERROR: {str(e)}"
 
 async def schedule_trade(asset: str, direction: str, client=None):
+    from bot_logic import send_loud_notification
     if not is_trading_hours():
         logger.warning(f"Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
         log_trade(asset, direction, "SKIPPED_WEEKEND")
-        if client:
-            try:
-                await client.send_message(5188160752, f"❌ Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
-            except Exception:
-                pass
+        await send_loud_notification(f"❌ Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
         return
 
     now = datetime.now()
     next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
     
-    # 1. Fetch all API data and IDs immediately so we don't waste time at the 00 second mark
+    # Fetch all API data and IDs immediately so we don't waste time at the 00 second mark
     prep_data, status = await asyncio.to_thread(_sync_prepare_trade, asset, next_minute)
     if prep_data is None:
         logger.error(f"Failed to prepare trade: {status}")
         log_trade(asset, direction, status, next_minute)
         
-        # Send Telegram notification based on error type
-        if client:
-            try:
-                if status == "ASSET_NOT_FOUND":
-                    await client.send_message(5188160752, f"⚠️ Asset not found on IQ Option: {asset}\nNo trade was placed.")
-                else:
-                    await client.send_message(5188160752, f"❌ Failed to prepare trade for {asset}: {status}")
-            except Exception:
-                pass
+        # Send loud Telegram notification based on error type
+        from bot_logic import send_loud_notification
+        if status == "ASSET_NOT_FOUND":
+            await send_loud_notification(f"⚠️ Asset not found on IQ Option: {asset}\nNo trade was placed.")
+        else:
+            await send_loud_notification(f"❌ Failed to prepare trade for {asset}: {status}")
         return
         
     api_direction = "call" if direction.upper() == "CALL" else "put"
@@ -281,14 +275,11 @@ async def schedule_trade(asset: str, direction: str, client=None):
     
     log_trade(asset, direction, exec_status, next_minute)
     
-    if client:
-        try:
-            if success:
-                await client.send_message(5188160752, f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}")
-            else:
-                await client.send_message(5188160752, f"❌ Failed to execute trade for {asset}.\nReason: {exec_status}")
-        except Exception:
-            pass
+    from bot_logic import send_loud_notification
+    if success:
+        await send_loud_notification(f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}")
+    else:
+        await send_loud_notification(f"❌ Failed to execute trade for {asset}.\nReason: {exec_status}")
 
 def log_trade(asset: str, direction: str, status: str, trade_time: datetime = None):
     if trade_time is None:

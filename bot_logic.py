@@ -12,6 +12,19 @@ bot_state = {"mode": "IDLE", "asset": None}
 CALL_STICKER_IDS = [6116081567497459695, 6116272169556121384]   # UP / CALL
 PUT_STICKER_IDS = [6116266384235174391]                         # DOWN / PUT
 
+async def send_loud_notification(text: str):
+    import os
+    import aiohttp
+    bot_token = os.getenv("BOT_TOKEN")
+    if bot_token:
+        try:
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            payload = {"chat_id": 5188160752, "text": text}
+            async with aiohttp.ClientSession() as session:
+                await session.post(url, json=payload)
+        except Exception as e:
+            logger.error(f"Failed to send loud notification: {e}")
+
 async def handle_message(event: events.NewMessage.Event, client) -> None:
     """Handles incoming channel messages and stickers via Telethon."""
     
@@ -35,11 +48,8 @@ async def handle_message(event: events.NewMessage.Event, client) -> None:
             asset = bot_state["asset"]
             logger.info(f"Direction {direction} received for {asset}. Triggering trade.")
             
-            # Send immediate notification of signal received
-            try:
-                await client.send_message(5188160752, f"🚀 Signal received!\nAsset: {asset}\nDirection: {direction}\nPreparing trade...")
-            except Exception as e:
-                logger.error(f"Failed to send Telegram notification: {e}")
+            # Send immediate loud notification
+            await send_loud_notification(f"🚀 Signal received!\nAsset: {asset}\nDirection: {direction}\nPreparing trade...")
             
             # Reset state immediately to avoid duplicate triggers
             bot_state["mode"] = "IDLE"
