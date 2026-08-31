@@ -161,8 +161,7 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     
     for a in assets_result.get("assets", []):
         a_name = str(a.get("name", "")).upper()
-        # Match EUR/JPY, EURJPY, or EURJPY-OTC
-        if a_name == search_name or a_name == search_name_no_slash or a_name.startswith(search_name_no_slash + "-OTC") or a_name.startswith(search_name_no_slash + " (OTC)"):
+        if a_name == search_name or a_name == search_name_no_slash:
             target_asset = a
             break
             
@@ -217,10 +216,15 @@ def _sync_execute_trade(trade_args: dict):
         logger.error(f"Error executing MCP trade: {e}")
         return False, f"ERROR: {str(e)}"
 
-async def schedule_trade(asset: str, direction: str):
+async def schedule_trade(asset: str, direction: str, client=None):
     if not is_trading_hours():
         logger.warning(f"Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
         log_trade(asset, direction, "SKIPPED_WEEKEND")
+        if client:
+            try:
+                await client.send_message(5188160752, f"❌ Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
+            except Exception:
+                pass
         return
 
     now = datetime.now()
@@ -231,6 +235,16 @@ async def schedule_trade(asset: str, direction: str):
     if prep_data is None:
         logger.error(f"Failed to prepare trade: {status}")
         log_trade(asset, direction, status, next_minute)
+        
+        # Send Telegram notification based on error type
+        if client:
+            try:
+                if status == "ASSET_NOT_FOUND":
+                    await client.send_message(5188160752, f"⚠️ Asset not found on IQ Option: {asset}\nNo trade was placed.")
+                else:
+                    await client.send_message(5188160752, f"❌ Failed to prepare trade for {asset}: {status}")
+            except Exception:
+                pass
         return
         
     api_direction = "call" if direction.upper() == "CALL" else "put"
@@ -266,6 +280,15 @@ async def schedule_trade(asset: str, direction: str):
     success, exec_status = await asyncio.to_thread(_sync_execute_trade, trade_args)
     
     log_trade(asset, direction, exec_status, next_minute)
+    
+    if client:
+        try:
+            if success:
+                await client.send_message(5188160752, f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}")
+            else:
+                await client.send_message(5188160752, f"❌ Failed to execute trade for {asset}.\nReason: {exec_status}")
+        except Exception:
+            pass
 
 def log_trade(asset: str, direction: str, status: str, trade_time: datetime = None):
     if trade_time is None:

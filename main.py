@@ -67,7 +67,7 @@ async def main():
 
     @client.on(events.NewMessage(chats=target_chats))
     async def message_handler(event):
-        await handle_message(event)
+        await handle_message(event, client)
 
     logger.info("Starting Telethon Userbot...")
     await client.start()

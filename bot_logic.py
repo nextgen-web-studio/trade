@@ -12,7 +12,7 @@ bot_state = {"mode": "IDLE", "asset": None}
 CALL_STICKER_IDS = [6116081567497459695, 6116272169556121384]   # UP / CALL
 PUT_STICKER_IDS = [6116266384235174391]                         # DOWN / PUT
 
-async def handle_message(event: events.NewMessage.Event) -> None:
+async def handle_message(event: events.NewMessage.Event, client) -> None:
     """Handles incoming channel messages and stickers via Telethon."""
     
     global bot_state
@@ -35,12 +35,18 @@ async def handle_message(event: events.NewMessage.Event) -> None:
             asset = bot_state["asset"]
             logger.info(f"Direction {direction} received for {asset}. Triggering trade.")
             
+            # Send immediate notification of signal received
+            try:
+                await client.send_message(5188160752, f"🚀 Signal received!\nAsset: {asset}\nDirection: {direction}\nPreparing trade...")
+            except Exception as e:
+                logger.error(f"Failed to send Telegram notification: {e}")
+            
             # Reset state immediately to avoid duplicate triggers
             bot_state["mode"] = "IDLE"
             bot_state["asset"] = None
             
             # Trigger the trade scheduling asynchronously
-            await schedule_trade(asset, direction)
+            await schedule_trade(asset, direction, client)
             
         elif bot_state["mode"] != "ASSET_RECEIVED":
             logger.info("Received a sticker, but we don't have an active asset yet. Ignoring.")
