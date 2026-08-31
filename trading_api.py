@@ -146,14 +146,16 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     if not balances_result or not assets_result:
         return None, "READ_BATCH_FAILED"
         
-    training_balance_id = None
+    target_balance_id = None
+    account_type = os.getenv("ACCOUNT_TYPE", "training").lower()
+    
     for b in balances_result.get("balances", []):
-        if b.get("type") == "training":
-            training_balance_id = b.get("balance_id")
+        if b.get("type") == account_type:
+            target_balance_id = b.get("balance_id")
             break
             
-    if not training_balance_id:
-        return None, "NO_DEMO_BALANCE"
+    if not target_balance_id:
+        return None, f"NO_{account_type.upper()}_BALANCE"
         
     target_asset = None
     search_name = asset_name.upper()
@@ -183,7 +185,7 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     
     return {
         "asset_id": asset_id,
-        "balance_id": training_balance_id,
+        "balance_id": target_balance_id,
         "profit_percent": profit_percent,
         "expiration": best_expiration
     }, "SUCCESS"
@@ -207,7 +209,8 @@ def _sync_execute_trade(trade_args: dict):
                     logger.error(f"Trade failed (Tool Error): {err_msg}")
                     return False, f"TRADE_ERROR: {err_msg}"
                 else:
-                    logger.info("✅ Trade successfully placed on IQ Option Demo Account!")
+                    account_type = os.getenv("ACCOUNT_TYPE", "training").upper()
+                    logger.info(f"✅ Trade successfully placed on IQ Option {account_type} Account!")
                     return True, "SUCCESS"
                     
         return False, "UNKNOWN_TRADE_RESPONSE"
@@ -242,11 +245,13 @@ async def schedule_trade(asset: str, direction: str, client=None):
         return
         
     api_direction = "call" if direction.upper() == "CALL" else "put"
+    trade_amount = float(os.getenv("TRADE_AMOUNT", "10"))
+    
     trade_args = {
         "asset_id": prep_data["asset_id"],
         "direction": api_direction,
         "expired": prep_data["expiration"],
-        "amount": 10,
+        "amount": trade_amount,
         "profit_percent": prep_data["profit_percent"],
         "balance_id": prep_data["balance_id"]
     }
