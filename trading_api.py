@@ -250,6 +250,14 @@ async def schedule_trade(asset: str, direction: str, client=None):
     api_direction = "call" if direction.upper() == "CALL" else "put"
     
     trade_amount_env = os.getenv("TRADE_AMOUNT", "10").strip()
+    
+    if float(prep_data["balance_amount"]) <= 0:
+        logger.error("Trade aborted: Account balance is zero.")
+        log_trade(asset, direction, "INSUFFICIENT_FUNDS", next_minute)
+        from bot_logic import send_loud_notification
+        await send_loud_notification(f"❌ Trade skipped for {asset}.\nReason: Your account balance is $0.00!")
+        return
+
     if trade_amount_env.endswith("%"):
         percent = float(trade_amount_env.replace("%", "")) / 100
         trade_amount = float(prep_data["balance_amount"]) * percent
