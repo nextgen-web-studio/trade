@@ -147,11 +147,13 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
         return None, "READ_BATCH_FAILED"
         
     target_balance_id = None
+    target_balance_amount = 0
     account_type = os.getenv("ACCOUNT_TYPE", "training").lower()
     
     for b in balances_result.get("balances", []):
         if b.get("type") == account_type:
             target_balance_id = b.get("balance_id")
+            target_balance_amount = b.get("amount", 0)
             break
             
     if not target_balance_id:
@@ -186,6 +188,7 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     return {
         "asset_id": asset_id,
         "balance_id": target_balance_id,
+        "balance_amount": target_balance_amount,
         "profit_percent": profit_percent,
         "expiration": best_expiration
     }, "SUCCESS"
@@ -245,8 +248,16 @@ async def schedule_trade(asset: str, direction: str, client=None):
         return
         
     api_direction = "call" if direction.upper() == "CALL" else "put"
-    trade_amount = float(os.getenv("TRADE_AMOUNT", "10"))
     
+    trade_amount_env = os.getenv("TRADE_AMOUNT", "10").strip()
+    if trade_amount_env.endswith("%"):
+        percent = float(trade_amount_env.replace("%", "")) / 100
+        trade_amount = float(prep_data["balance_amount"]) * percent
+        # Ensure minimum trade size (usually $1 for IQ Option)
+        trade_amount = max(1.0, round(trade_amount, 2))
+    else:
+        trade_amount = float(trade_amount_env)
+        
     trade_args = {
         "asset_id": prep_data["asset_id"],
         "direction": api_direction,
@@ -282,7 +293,7 @@ async def schedule_trade(asset: str, direction: str, client=None):
     
     from bot_logic import send_loud_notification
     if success:
-        await send_loud_notification(f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}")
+        await send_loud_notification(f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}\nAmount: ${trade_args['amount']}")
     else:
         await send_loud_notification(f"❌ Failed to execute trade for {asset}.\nReason: {exec_status}")
 
