@@ -161,7 +161,8 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     
     for a in assets_result.get("assets", []):
         a_name = str(a.get("name", "")).upper()
-        if a_name == search_name or a_name == search_name_no_slash:
+        # Match EUR/JPY, EURJPY, or EURJPY-OTC
+        if a_name == search_name or a_name == search_name_no_slash or a_name.startswith(search_name_no_slash + "-OTC") or a_name.startswith(search_name_no_slash + " (OTC)"):
             target_asset = a
             break
             
