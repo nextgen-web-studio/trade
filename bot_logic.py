@@ -55,8 +55,10 @@ async def handle_message(event: events.NewMessage.Event, client) -> None:
             bot_state["mode"] = "IDLE"
             bot_state["asset"] = None
             
-            # Trigger the trade scheduling asynchronously
-            await schedule_trade(asset, direction, client)
+            # Trigger the trade scheduling as a background task
+            # Using create_task so the bot stays responsive to NEW signals during the wait
+            import asyncio
+            asyncio.create_task(schedule_trade(asset, direction, client))
             
         elif bot_state["mode"] != "ASSET_RECEIVED":
             logger.info("Received a sticker, but we don't have an active asset yet. Ignoring.")

@@ -190,7 +190,9 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     target_ts = int(target_expiration_dt.timestamp())
     
     future_expirations = [ts for ts in expirations if ts >= target_ts]
-    best_expiration = min(future_expirations) if future_expirations else max(expirations)
+    if not future_expirations:
+        return None, "NO_FUTURE_EXPIRATIONS"
+    best_expiration = min(future_expirations)
     
     return {
         "asset_id": asset_id,
@@ -220,7 +222,7 @@ def _sync_execute_trade(trade_args: dict):
                     return False, f"TRADE_ERROR: {err_msg}"
                 else:
                     account_type = os.getenv("ACCOUNT_TYPE", "training").upper()
-                    logger.info(f"✅ Trade successfully placed on IQ Option {account_type} Account!")
+                    logger.info(f"Trade successfully placed on IQ Option {account_type} Account!")
                     return True, "SUCCESS"
                     
         return False, "UNKNOWN_TRADE_RESPONSE"
@@ -252,9 +254,11 @@ async def schedule_trade(asset: str, direction: str, client=None):
         # Send loud Telegram notification based on error type
         from bot_logic import send_loud_notification
         if status == "ASSET_NOT_FOUND":
-            await send_loud_notification(f"⚠️ Asset not found on IQ Option: {asset}\nNo trade was placed.")
+            await send_loud_notification(f"Asset not found on IQ Option: {asset}\nNo trade was placed.")
+        elif status == "NO_FUTURE_EXPIRATIONS":
+            await send_loud_notification(f"No valid expiration found for {asset}. Market may be closing soon.")
         else:
-            await send_loud_notification(f"❌ Failed to prepare trade for {asset}: {status}")
+            await send_loud_notification(f"Failed to prepare trade for {asset}: {status}")
         return
         
     api_direction = "call" if direction.upper() == "CALL" else "put"
@@ -265,7 +269,7 @@ async def schedule_trade(asset: str, direction: str, client=None):
         logger.error("Trade aborted: Account balance is zero.")
         log_trade(asset, direction, "INSUFFICIENT_FUNDS", next_minute)
         from bot_logic import send_loud_notification
-        await send_loud_notification(f"❌ Trade skipped for {asset}.\nReason: Your account balance is $0.00!")
+        await send_loud_notification(f"Trade skipped for {asset}.\nReason: Your account balance is $0.00!")
         return
 
     if trade_amount_env.endswith("%"):
