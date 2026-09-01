@@ -8,6 +8,7 @@ from aiohttp import web
 
 from bot_logic import handle_message
 from bot_commands import handle_bot_command
+from bot_polling import start_bot_command_polling
 
 # Configure logging
 logging.basicConfig(
@@ -81,7 +82,10 @@ async def main():
 
     logger.info("Starting Telethon Userbot...")
     await client.start()
-    
+
+    # Launch bot command polling as a background task (read-only, isolated from trading)
+    asyncio.create_task(start_bot_command_polling())
+
     logger.info("Bot is running and listening for messages.")
     await client.run_until_disconnected()
 
