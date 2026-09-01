@@ -118,6 +118,22 @@ async def _handle_command(bot_token: str, chat_id: int, text: str):
         await _send_reply(bot_token, chat_id,
             "Unknown command. Send /help to see available commands.")
 
+async def _register_commands(bot_token: str):
+    """Registers the command menu that appears when user taps '/' in the bot chat."""
+    url = f"https://api.telegram.org/bot{bot_token}/setMyCommands"
+    commands = [
+        {"command": "balance", "description": "Show your IQ Option account balance"},
+        {"command": "history", "description": "Show last 10 trades placed by the bot"},
+        {"command": "tradeamount", "description": "Show current trade amount setting"},
+        {"command": "help", "description": "Show all available commands"},
+    ]
+    try:
+        async with aiohttp.ClientSession() as session:
+            await session.post(url, json={"commands": commands})
+        logger.info("Bot command menu registered successfully.")
+    except Exception as e:
+        logger.error(f"Failed to register bot commands: {e}")
+
 async def start_bot_command_polling():
     """
     Polls the Telegram Bot API for new messages.
@@ -127,6 +143,9 @@ async def start_bot_command_polling():
     if not bot_token:
         logger.warning("BOT_TOKEN not set. Bot command polling disabled.")
         return
+
+    # Register the "/" command menu in Telegram
+    await _register_commands(bot_token)
 
     logger.info("Bot command polling started. Send /help to your notification bot.")
     offset = None

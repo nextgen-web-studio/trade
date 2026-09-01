@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from aiohttp import web
 
 from bot_logic import handle_message
-from bot_commands import handle_bot_command
 from bot_polling import start_bot_command_polling
 
 # Configure logging
@@ -70,15 +69,6 @@ async def main():
     @client.on(events.NewMessage(chats=target_chats))
     async def message_handler(event):
         await handle_message(event, client)
-
-    # ── COMMAND HANDLER (completely isolated from trading) ──────────────────
-    # Listens ONLY to your own outgoing messages that start with "/"
-    # Send /balance, /history, /tradeamount, or /help to your Saved Messages
-    # This handler is read-only and has ZERO impact on trade timing.
-    @client.on(events.NewMessage(outgoing=True, pattern=r'^/'))
-    async def command_handler(event):
-        await handle_bot_command(event)
-    # ────────────────────────────────────────────────────────────────────────
 
     logger.info("Starting Telethon Userbot...")
     await client.start()
