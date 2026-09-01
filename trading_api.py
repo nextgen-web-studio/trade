@@ -233,11 +233,20 @@ async def schedule_trade(asset: str, direction: str, client=None):
     if not is_trading_hours():
         logger.warning(f"Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
         log_trade(asset, direction, "SKIPPED_WEEKEND")
-        await send_loud_notification(f"❌ Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
+        await send_loud_notification(f"Trade skipped for {asset} {direction}: Outside trading hours (Weekend).")
         return
 
     now = datetime.now()
-    next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+    seconds_into_minute = now.second + now.microsecond / 1_000_000
+
+    # EDGE CASE FIX: If signal arrives in last 3 seconds (:57, :58, :59),
+    # the ~1s API call will push us PAST the :00 mark. Target +2 minutes instead
+    # so the expiration timestamp stays valid and IQ Option won't reject the trade.
+    if seconds_into_minute >= 57:
+        next_minute = (now + timedelta(minutes=2)).replace(second=0, microsecond=0)
+        logger.warning(f"Signal at :{int(seconds_into_minute)}s (edge of candle). Targeting next-next candle at {next_minute.strftime('%H:%M')} to avoid rejection.")
+    else:
+        next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
     
     # Fetch all API data and IDs immediately so we don't waste time at the 00 second mark
     prep_data, status = await asyncio.to_thread(_sync_prepare_trade, asset, next_minute)
