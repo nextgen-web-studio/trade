@@ -150,8 +150,9 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
     target_balance_amount = 0
     account_type_env = os.getenv("ACCOUNT_TYPE", "training").lower()
     
+    # IQ Option uses "regular" for real money accounts and "training" for demo accounts
     if account_type_env == "real":
-        valid_types = ["real", "1", 1]
+        valid_types = ["regular", "real", "1", 1]
     else:
         valid_types = ["training", "practice", "4", 4]
     
