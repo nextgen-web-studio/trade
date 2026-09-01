@@ -92,10 +92,11 @@ def is_trading_hours() -> bool:
     return datetime.now().weekday() < 5
 
 
-# Tweak this value if your computer's clock is slightly faster or slower than IQ Option's server.
-# Because the bot is now hosted on Render (which has a perfectly accurate clock), 
-# we set this to a slightly negative number to account for network latency.
-TRADE_DELAY_SECONDS = -0.525
+# How many seconds AFTER the minute mark to fire the trade.
+# 0.5 = fires at HH:MM:00.500 — half a second after the candle opens.
+# This ensures the candle is definitively open on IQ Option's server before we place.
+# Do NOT use a negative value — that fires before the candle opens which risks rejection.
+TRADE_DELAY_SECONDS = 0.5
 
 def _execute_mcp_batch(batch_commands):
     payload = []
@@ -312,9 +313,9 @@ async def schedule_trade(asset: str, direction: str, client=None):
     
     from bot_logic import send_loud_notification
     if success:
-        await send_loud_notification(f"✅ Trade placed successfully!\nAsset: {asset}\nDirection: {direction}\nAmount: ${trade_args['amount']}")
+        await send_loud_notification(f"Trade placed successfully!\nAsset: {asset}\nDirection: {direction}\nAmount: {trade_args['amount']}")
     else:
-        await send_loud_notification(f"❌ Failed to execute trade for {asset}.\nReason: {exec_status}")
+        await send_loud_notification(f"Failed to execute trade for {asset}.\nReason: {exec_status}")
 
 def log_trade(asset: str, direction: str, status: str, trade_time: datetime = None):
     if trade_time is None:
