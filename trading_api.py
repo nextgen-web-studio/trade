@@ -148,16 +148,21 @@ def _sync_prepare_trade(asset_name: str, trade_time: datetime):
         
     target_balance_id = None
     target_balance_amount = 0
-    account_type = os.getenv("ACCOUNT_TYPE", "training").lower()
+    account_type_env = os.getenv("ACCOUNT_TYPE", "training").lower()
+    
+    if account_type_env == "real":
+        valid_types = ["real", "1", 1]
+    else:
+        valid_types = ["training", "practice", "4", 4]
     
     for b in balances_result.get("balances", []):
-        if b.get("type") == account_type:
+        if b.get("type") in valid_types:
             target_balance_id = b.get("balance_id")
             target_balance_amount = b.get("amount", 0)
             break
             
     if not target_balance_id:
-        return None, f"NO_{account_type.upper()}_BALANCE"
+        return None, f"NO_{account_type_env.upper()}_BALANCE"
         
     target_asset = None
     search_name = asset_name.upper()
